@@ -36,9 +36,9 @@ class _TimelineCanvasState extends State<TimelineCanvas> {
           onPointerSignal: (event) {
             if (event is PointerScrollEvent) {
               if (event.scrollDelta.dy < 0) {
-                state.zoomIn(factor: 1.1);
+                state.zoomIn(factor: 1.1, viewportWidth: constraints.maxWidth);
               } else {
-                state.zoomOut(factor: 1.1);
+                state.zoomOut(factor: 1.1, viewportWidth: constraints.maxWidth);
               }
             }
           },
@@ -97,9 +97,103 @@ class _TimelineCanvasState extends State<TimelineCanvas> {
     Timeline timeline,
     BoxConstraints constraints,
   ) {
-    // TODO: Implement hit testing for periods and events
-    // This will require calculating the screen positions of each element
-    // based on zoom and pan, then overlaying transparent GestureDetectors
-    return const SizedBox.expand();
+    final earliest = timeline.earliestTime;
+    final latest = timeline.latestTime;
+    if (earliest == null || latest == null) {
+      return const SizedBox.expand();
+    }
+
+    final startBP = earliest.toYearsBP();
+    final endBP = latest.toYearsBP();
+    final timeSpan = startBP - endBP;
+    if (timeSpan <= 0) {
+      return const SizedBox.expand();
+    }
+
+    final viewportWidth = constraints.maxWidth;
+    final viewportHeight = constraints.maxHeight;
+
+    // Layout constants (must match TimelinePainter)
+    const axisHeight = 50.0;
+    const periodRowHeight = 40.0;
+    const periodSpacing = 8.0;
+    const eventRadius = 8.0;
+
+    // Helper to convert time to X coordinate
+    double timeToX(double yearsBP) {
+      final normalized = (yearsBP - endBP) / timeSpan;
+      final scaledWidth = viewportWidth * state.zoom;
+      return (1 - normalized) * scaledWidth + state.panOffset;
+    }
+
+    final children = <Widget>[];
+
+    // Build period hit areas
+    final sortedPeriods = List<TimelinePeriod>.from(timeline.periods)
+      ..sort((a, b) => b.startTime.compareTo(a.startTime));
+
+    for (var i = 0; i < sortedPeriods.length; i++) {
+      final period = sortedPeriods[i];
+      final row = i % 8;
+
+      final startX = timeToX(period.startTime.toYearsBP());
+      final periodEndX = timeToX(period.effectiveEndTime.toYearsBP());
+      final left = startX < periodEndX ? startX : periodEndX;
+      final width = (periodEndX - startX).abs();
+      final top = axisHeight + 20 + row * (periodRowHeight + periodSpacing);
+
+      // Skip if off screen
+      if (left + width < 0 || left > viewportWidth) continue;
+
+      children.add(
+        Positioned(
+          left: left,
+          top: top,
+          width: width < 2 ? 2 : width,
+          height: periodRowHeight,
+          child: MouseRegion(
+            onEnter: (_) => state.setHoveredPeriod(period),
+            onExit: (_) => state.setHoveredPeriod(null),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => state.selectPeriod(period),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Build event hit areas
+    for (final event in timeline.events) {
+      final x = timeToX(event.time.toYearsBP());
+      final y = viewportHeight - 60;
+
+      // Skip if off screen
+      if (x < -20 || x > viewportWidth + 20) continue;
+
+      // Make hit area larger than visual for easier clicking
+      const hitRadius = eventRadius * 2;
+
+      children.add(
+        Positioned(
+          left: x - hitRadius,
+          top: y - hitRadius,
+          width: hitRadius * 2,
+          height: hitRadius * 2,
+          child: MouseRegion(
+            onEnter: (_) => state.setHoveredEvent(event),
+            onExit: (_) => state.setHoveredEvent(null),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => state.selectEvent(event),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Stack(children: children);
   }
 }

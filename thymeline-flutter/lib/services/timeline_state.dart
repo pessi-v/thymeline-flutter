@@ -88,21 +88,44 @@ class TimelineState extends ChangeNotifier {
 
   // Zoom controls
 
-  /// Zoom in by a factor.
-  void zoomIn({double factor = 1.2}) {
-    _zoom = (_zoom * factor).clamp(0.001, 1000.0);
-    notifyListeners();
+  /// Zoom in by a factor, keeping the center of the viewport fixed.
+  void zoomIn({double factor = 1.2, double? viewportWidth}) {
+    _zoomAroundCenter(factor: factor, viewportWidth: viewportWidth);
   }
 
-  /// Zoom out by a factor.
-  void zoomOut({double factor = 1.2}) {
-    _zoom = (_zoom / factor).clamp(0.001, 1000.0);
+  /// Zoom out by a factor, keeping the center of the viewport fixed.
+  void zoomOut({double factor = 1.2, double? viewportWidth}) {
+    _zoomAroundCenter(factor: 1 / factor, viewportWidth: viewportWidth);
+  }
+
+  /// Internal method to zoom around the center of the viewport.
+  void _zoomAroundCenter({required double factor, double? viewportWidth}) {
+    final oldZoom = _zoom;
+    final newZoom = (_zoom * factor).clamp(0.001, 1000.0);
+
+    if (viewportWidth != null) {
+      final ratio = newZoom / oldZoom;
+      final center = viewportWidth / 2;
+      // Adjust pan offset to keep the center point fixed
+      _panOffset = center * (1 - ratio) + _panOffset * ratio;
+    }
+
+    _zoom = newZoom;
     notifyListeners();
   }
 
   /// Set zoom to a specific level.
-  void setZoom(double zoom) {
-    _zoom = zoom.clamp(0.001, 1000.0);
+  void setZoom(double zoom, {double? viewportWidth}) {
+    final oldZoom = _zoom;
+    final newZoom = zoom.clamp(0.001, 1000.0);
+
+    if (viewportWidth != null && oldZoom != newZoom) {
+      final ratio = newZoom / oldZoom;
+      final center = viewportWidth / 2;
+      _panOffset = center * (1 - ratio) + _panOffset * ratio;
+    }
+
+    _zoom = newZoom;
     notifyListeners();
   }
 

@@ -9,6 +9,7 @@ class ZoomControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<TimelineState>();
+    final viewportWidth = MediaQuery.of(context).size.width;
 
     return Card(
       elevation: 4,
@@ -18,7 +19,7 @@ class ZoomControls extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              onPressed: () => state.zoomIn(),
+              onPressed: () => state.zoomIn(viewportWidth: viewportWidth),
               icon: const Icon(Icons.add),
               tooltip: 'Zoom in',
             ),
@@ -30,7 +31,7 @@ class ZoomControls extends StatelessWidget {
               ),
             ),
             IconButton(
-              onPressed: () => state.zoomOut(),
+              onPressed: () => state.zoomOut(viewportWidth: viewportWidth),
               icon: const Icon(Icons.remove),
               tooltip: 'Zoom out',
             ),
