@@ -17,6 +17,8 @@ class TimelineCanvas extends StatefulWidget {
 class _TimelineCanvasState extends State<TimelineCanvas> {
   // For tracking pan gestures
   double _lastPanX = 0;
+  // For tracking double-tap position
+  Offset? _doubleTapPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +57,19 @@ class _TimelineCanvasState extends State<TimelineCanvas> {
             // Tap to clear selection
             onTap: () {
               state.clearSelection();
+            },
+            // Double-tap to zoom in and center on that point
+            onDoubleTapDown: (details) {
+              _doubleTapPosition = details.localPosition;
+            },
+            onDoubleTap: () {
+              if (_doubleTapPosition != null) {
+                state.zoomInAtPoint(
+                  _doubleTapPosition!.dx,
+                  constraints.maxWidth,
+                );
+                _doubleTapPosition = null;
+              }
             },
             child: MouseRegion(
               onHover: (event) {

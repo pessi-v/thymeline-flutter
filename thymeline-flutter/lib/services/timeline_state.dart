@@ -137,6 +137,18 @@ class TimelineState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Zoom in and center on a specific point (for double-click zoom).
+  void zoomInAtPoint(double focalX, double viewportWidth, {double factor = 2.0}) {
+    final oldZoom = _zoom;
+    final newZoom = (_zoom * factor).clamp(0.001, 1000.0);
+    final ratio = newZoom / oldZoom;
+
+    // Adjust pan offset to center the focal point after zoom
+    _panOffset = viewportWidth / 2 + ratio * (_panOffset - focalX);
+    _zoom = newZoom;
+    notifyListeners();
+  }
+
   // Pan controls
 
   /// Pan by a delta amount.
